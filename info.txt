@@ -1,0 +1,5 @@
+15 colors for data4.txt
+20 colors for data5.txt
+
+21 colors for 50
+10 colors for 20
