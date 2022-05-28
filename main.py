@@ -1,8 +1,11 @@
 import random
 import select
 
-size = 100
+size = 500 
 matrix = []
+
+def updateSize(_size):
+    size = _size
 
 inputTable = []
 
@@ -67,12 +70,6 @@ def generator(size, saturation):
 
 #WRITE TO FILE END
 
-
-
-#GREEDY ALGO
-# for i in matrix:
-#     print(i)
-
 def greedySearch():
     colorTable = []
     for i in range(size):
@@ -93,8 +90,6 @@ def greedySearch():
         # print(colorTable[i])
 
     return max(colorTable)
-
-#GREEDY ALGO END
 
 class Specimen:
     def __init__(self, coloredVerticles):
@@ -132,6 +127,7 @@ def evaluatePopulation(population, graph):
 
 def selection(population):
     population.sort(key = lambda x: x.errors, reverse = True)
+
     rankSum = 0
     curRank = 0
 
@@ -204,7 +200,7 @@ def mutation(population, mutationProb, numberOfColors):
 def checkIfSolutionExists(population):
     for p in population:
         if p.errors == 0:
-            print(p.coloredVerticles)
+            print(max(p.coloredVerticles), p.coloredVerticles)
             return True
 
     return False
@@ -221,31 +217,30 @@ def printPopulation(population):
     for s in population:
         print(s.errors, s.coloredVerticles)
 
-def main():
-    # readFromFile('miles250.txt')
-    generator(100, 40)
-    maxGreedy = greedySearch()
-    print(maxGreedy)
-    population = generatePopulation(150, maxGreedy - 1, len(matrix))
-    population = evaluatePopulation(population, matrix)
 
+
+def main():
+    readFromFile('gc500.txt')
+    maxGreedy = greedySearch()
+    populationSize = 300
+    population = generatePopulation(populationSize, maxGreedy - 1, len(matrix))
+    population = evaluatePopulation(population, matrix)
+    # 300 0,5 0,0009
     # 0.8 0.005
     for i in range(1000000):
         population = selection(population)
-        population = crossover(population, 0.8)
-        population = mutation(population, 0.008, maxGreedy)
+        population = crossover(population, 0.3)
+        population = mutation(population, 0.0003, maxGreedy)
         population = evaluatePopulation(population, matrix)
-        population = selection(population)
-
 
         errors = []
         for p in population:
             errors.append(p.errors)
 
-        print(str(i) + ": " + str(min(errors) // 2) + ", maxGreedy: " + str(maxGreedy))
+        print(str(i) + ":   " + str(min(errors) // 2) + " (min)   " + str(max(errors) // 2) + "(max)  , looking for max: " + str(maxGreedy - 1))
 
         if (checkIfSolutionExists(population)):
             maxGreedy -= 1
-            population = generatePopulation(80, maxGreedy - 1, len(matrix))
+            population = generatePopulation(populationSize, maxGreedy - 1, len(matrix))
 
 main()
