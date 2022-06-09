@@ -1,15 +1,9 @@
 import random
-import select
-
-size = 500 
-matrix = []
-
-def updateSize(_size):
-    size = _size
-
-inputTable = []
+import time
 
 def readFromFile(fileName):
+    matrix = []
+    inputTable = []
     with open(fileName) as f:
         size = int(next(f))
         for line in f:
@@ -25,9 +19,11 @@ def readFromFile(fileName):
         matrix[inputTableLine[0] - 1][inputTableLine[1] - 1] = 1
         matrix[inputTableLine[1] - 1][inputTableLine[0] - 1] = 1
 
+    return matrix
+
 def generator(size, saturation):
+    matrix = []
     howManyEdges = int((size * size - size) / 2)
-    print(howManyEdges)
 
     for i in range(size):
         innerTable = []
@@ -59,19 +55,20 @@ def generator(size, saturation):
 
         counter += 1
 
-#WRITE TO FILE
+    return matrix
 
-# with open('data5.txt', 'w') as f:
-#     f.write(str(size) + '\n')
-#     for i in range(size):
-#         for j in range(i, size):
-#             if (matrix[i][j] == 1):
-#                 f.write(str(i + 1) + " " + str(j + 1) + '\n')
+def writeToFile(fileName, matrix):
+    size = len(matrix)
+    with open(fileName, 'w') as f:
+        f.write(str(size) + '\n')
+        for i in range(size):
+            for j in range(i, size):
+                if (matrix[i][j] == 1):
+                    f.write(str(i + 1) + " " + str(j + 1) + '\n')
 
-#WRITE TO FILE END
-
-def greedySearch():
+def greedySearch(matrix):
     colorTable = []
+    size = len(matrix)
     for i in range(size):
         colorTable.append(0)
 
@@ -87,8 +84,7 @@ def greedySearch():
                 colorTable[i] = j
                 break
 
-        # print(colorTable[i])
-
+    print("Greedy: colors:", max(colorTable), " for: ", colorTable)
     return max(colorTable)
 
 class Specimen:
@@ -114,7 +110,7 @@ def generatePopulation(populationSize, numberOfColors, verticles):
 def evaluateSpecimen(specimen, graph):
     specimen.errors = 0
     for i in range(len(graph)):
-        for j in range(len(graph)):
+        for j in range(i, len(graph)):
             if graph[i][j] == 1 and specimen.coloredVerticles[i] == specimen.coloredVerticles[j]:
                 specimen.errors += 1
     return specimen
@@ -131,15 +127,15 @@ def selection(population):
     rankSum = 0
     curRank = 0
 
-    specs = []
-    for p in population:
-        specs.append([curRank, p])
+    specsRank = []
+    for s in population:
+        specsRank.append([curRank, s])
         rankSum += curRank
         curRank += 1
 
     thresholdList = []
     treshold = 0.0
-    for s in specs:
+    for s in specsRank:
         treshold = treshold + (s[0] / rankSum)
         thresholdList.append([treshold, s[1]])
 
@@ -190,17 +186,19 @@ def crossover(population, crossoverProb):
     return newPopulation
 
 def mutation(population, mutationProb, numberOfColors):
-    for p in population:
-        for i in range(len(p.coloredVerticles)):
+    for s in population:
+        for i in range(len(s.coloredVerticles)):
             if random.uniform(0, 1) < mutationProb:
-                p.coloredVerticles[i] = random.randrange(1, numberOfColors)
+                s.coloredVerticles[i] = random.randrange(1, numberOfColors)
 
     return population
 
-def checkIfSolutionExists(population):
+ans = []
+def checkIfSolutionExists(population, iteration, maxColors):
     for p in population:
         if p.errors == 0:
-            print(max(p.coloredVerticles), p.coloredVerticles)
+            ans.append([maxColors, iteration, p.coloredVerticles])
+            print("Found answear for max ", max(p.coloredVerticles), "colors: ",  p.coloredVerticles, " !")
             return True
 
     return False
@@ -217,30 +215,68 @@ def printPopulation(population):
     for s in population:
         print(s.errors, s.coloredVerticles)
 
+def printAns(ans):
+    print("----- Answears -----")
+    for a in ans:
+        print("Looked for max: ", a[0], " in iterations count: ", a[1], " with answear: ", a[2])
 
-
-def main():
-    readFromFile('gc500.txt')
-    maxGreedy = greedySearch()
-    populationSize = 300
+def metaheuristicSearch(matrix):
+    ans = []
+    iteration = []
+    maxGreedy = greedySearch(matrix)
+    print("START FROM -> " + str(maxGreedy))
+    populationSize = 500 # 150
     population = generatePopulation(populationSize, maxGreedy - 1, len(matrix))
     population = evaluatePopulation(population, matrix)
+    iteration.append([maxGreedy - 1, 0])
     # 300 0,5 0,0009
     # 0.8 0.005
-    for i in range(1000000):
-        population = selection(population)
-        population = crossover(population, 0.3)
-        population = mutation(population, 0.0003, maxGreedy)
-        population = evaluatePopulation(population, matrix)
+    startTime = time.time()
+    try:
+        for i in range(1000000):
+            iteration[-1][1] += 1
+            # print("STEP ", i, "ERRORS", population[0].errors, "COLORS", population[0].coloredVerticles)
+            population = selection(population)
+            population = crossover(population, 0.3)
+            population = mutation(population, 0.0005, maxGreedy)
+            population = evaluatePopulation(population, matrix)
 
-        errors = []
-        for p in population:
-            errors.append(p.errors)
+            errors = []
+            for p in population:
+                errors.append(p.errors)
 
-        print(str(i) + ":   " + str(min(errors) // 2) + " (min)   " + str(max(errors) // 2) + "(max)  , looking for max: " + str(maxGreedy - 1))
+            print(str(i) + ":   " + str(min(errors)) + " (min)   " + str(
+                max(errors)) + "(max)  , looking for max: " + str(maxGreedy - 1))
 
-        if (checkIfSolutionExists(population)):
-            maxGreedy -= 1
-            population = generatePopulation(populationSize, maxGreedy - 1, len(matrix))
+            if (checkIfSolutionExists(population, iteration[-1][1], maxGreedy - 1)):
+                maxGreedy -= 1
+                iteration.append([maxGreedy, 0])
+                population = generatePopulation(populationSize, maxGreedy, len(matrix))
+
+            # if time.time() - startTime > 60*3:
+            #     print("End of time!")
+            #     raise Exception("End of time!")
+    except:
+        printAns(ans)
+
+def main():
+    matrix = readFromFile('gc500.txt')
+    metaheuristicSearch(matrix)
+
+def analize():
+    for j in [20,30,40,50,60,70,80,90]:
+        print("----------------------------------------------------------------  number of verticles " + str(j) + "  ----------------------------------------------------------------")
+        for i in range(5):
+            print(" -----------------------  " + str(i) + "  -----------------------")
+            matrix = generator(j, 50)
+            metaheuristicSearch(matrix)
+
+def greedyVSmetaheurGenerator():
+
+    writeToFile("greedyVSmetaheur" + str(51) + ".txt")
+
+def greedyVSmetaheur():
+    readFromFile('greedyVSmetaheur51.txt')
+    main()
 
 main()
